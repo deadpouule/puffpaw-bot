@@ -1,39 +1,37 @@
 import os
 import json
 import tweepy
+from datetime import datetime
 from dune_client.client import DuneClient
 from dotenv import load_dotenv
 
-# Charger les clés du fichier .env
+# Charger les clés
 load_dotenv()
 
 # Configuration
 DUNE_API_KEY = os.getenv("DUNE_API_KEY")
-QUERY_ID = 6440532  # Ton nouvel ID
+QUERY_ID = 6440532
 DB_FILE = "data.json"
 
 def format_num(num):
     try:
-        # Formatage avec espace pour les milliers
         return "{:,}".format(int(num)).replace(",", " ")
     except:
         return "0"
 
 def run():
-    print(f"⏳ Récupération du dernier résultat pour la query {QUERY_ID}...")
+    print("🔄 Récupération des données sur Dune...")
     dune = DuneClient(DUNE_API_KEY)
     
     try:
-        # Utilisation de get_latest_result comme demandé
-        query_result = dune.get_latest_result(QUERY_ID)
+        # On force le calcul pour avoir la donnée la plus fraîche
+        query_result = dune.run_query(QUERY_ID)
         today_data = query_result.result.rows[0]
         print("✅ Données Dune récupérées.")
     except Exception as e:
         print(f"❌ Erreur Dune : {e}")
         return
 
-    # --- IDENTIFICATION DE LA COLONNE ---
-    # Le SQL que nous avons fait ensemble utilise 'total_vapes'
     vapes_now = today_data.get('total_vapes', 0)
 
     # --- GESTION DE LA MÉMOIRE ---
@@ -43,18 +41,21 @@ def run():
                 prev_data = json.load(f)
             except:
                 prev_data = {"vapes": vapes_now}
-        print(f"📖 Mémoire chargée : {prev_data.get('vapes')} vapes hier.")
     else:
         prev_data = {"vapes": vapes_now}
-        print("🆕 Première exécution : création de la mémoire.")
 
-    # Calcul de la différence
     vapes_diff = vapes_now - prev_data.get("vapes", vapes_now)
 
-    # --- PRÉPARATION DU TWEET ---
+    # --- RÉCUPÉRATION DE LA DATE ET L'HEURE ---
+    # Format : 30/12/2025 - 14:30
+    now = datetime.utcnow()
+    date_str = now.strftime("%d/%m/%Y - %H:%M")
+
+    # --- PRÉPARATION DU TWEET UNIQUE ---
     tweet_text = (
         f"🚨 PUFFPAW SALE UPDATE 🚨\n\n"
         f"💨 Total Vapes in circulation: {format_num(vapes_now)} (+{format_num(vapes_diff)})\n\n"
+        f"📅 {date_str} UTC"
     )
 
     print(f"📝 Tweet prêt :\n{tweet_text}")
@@ -70,10 +71,9 @@ def run():
         client.create_tweet(text=tweet_text)
         print("🚀 Tweet envoyé sur X !")
 
-        # Mise à jour de la mémoire pour demain
+        # Mise à jour de la mémoire
         with open(DB_FILE, "w") as f:
             json.dump({"vapes": vapes_now}, f)
-        print("💾 data.json mis à jour.")
             
     except Exception as e:
         print(f"❌ Erreur Twitter : {e}")

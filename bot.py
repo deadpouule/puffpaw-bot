@@ -3,6 +3,7 @@ import json
 import tweepy
 from datetime import datetime
 from dune_client.client import DuneClient
+from dune_client.query import Query # <-- NOUVEL IMPORT
 from dotenv import load_dotenv
 
 # Charger les clés
@@ -24,8 +25,10 @@ def run():
     dune = DuneClient(DUNE_API_KEY)
     
     try:
-        # On force le calcul pour avoir la donnée la plus fraîche
-        query_result = dune.run_query(QUERY_ID)
+        # On crée un objet Query au lieu de passer juste le chiffre
+        query = Query(query_id=QUERY_ID)
+        query_result = dune.run_query(query)
+        
         today_data = query_result.result.rows[0]
         print("✅ Données Dune récupérées.")
     except Exception as e:
@@ -47,7 +50,6 @@ def run():
     vapes_diff = vapes_now - prev_data.get("vapes", vapes_now)
 
     # --- RÉCUPÉRATION DE LA DATE ET L'HEURE ---
-    # Format : 30/12/2025 - 14:30
     now = datetime.utcnow()
     date_str = now.strftime("%d/%m/%Y - %H:%M")
 
@@ -74,6 +76,7 @@ def run():
         # Mise à jour de la mémoire
         with open(DB_FILE, "w") as f:
             json.dump({"vapes": vapes_now}, f)
+        print("💾 data.json mis à jour.")
             
     except Exception as e:
         print(f"❌ Erreur Twitter : {e}")

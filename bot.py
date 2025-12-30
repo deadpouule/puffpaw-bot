@@ -3,7 +3,6 @@ import json
 import tweepy
 from datetime import datetime
 from dune_client.client import DuneClient
-from dune_client.query import Query # <-- NOUVEL IMPORT
 from dotenv import load_dotenv
 
 # Charger les clés
@@ -21,20 +20,22 @@ def format_num(num):
         return "0"
 
 def run():
-    print("🔄 Récupération des données sur Dune...")
+    print(f"⏳ Récupération du dernier résultat pour la query {QUERY_ID}...")
+    
+    # Utilisation de ta syntaxe simplifiée
     dune = DuneClient(DUNE_API_KEY)
     
     try:
-        # On crée un objet Query au lieu de passer juste le chiffre
-        query = Query(query_id=QUERY_ID)
-        query_result = dune.run_query(query)
-        
+        # On passe directement l'ID (6440532) sans objet complexe
+        query_result = dune.get_latest_result(QUERY_ID)
         today_data = query_result.result.rows[0]
         print("✅ Données Dune récupérées.")
     except Exception as e:
         print(f"❌ Erreur Dune : {e}")
+        print("Astuce : Allez sur Dune et cliquez sur 'Run' manuellement une fois.")
         return
 
+    # On récupère la colonne 'total_vapes' définie dans ton SQL
     vapes_now = today_data.get('total_vapes', 0)
 
     # --- GESTION DE LA MÉMOIRE ---
@@ -49,11 +50,11 @@ def run():
 
     vapes_diff = vapes_now - prev_data.get("vapes", vapes_now)
 
-    # --- RÉCUPÉRATION DE LA DATE ET L'HEURE ---
+    # --- DATE ET HEURE UTC ---
     now = datetime.utcnow()
     date_str = now.strftime("%d/%m/%Y - %H:%M")
 
-    # --- PRÉPARATION DU TWEET UNIQUE ---
+    # --- PRÉPARATION DU TWEET ---
     tweet_text = (
         f"🚨 PUFFPAW SALE UPDATE 🚨\n\n"
         f"💨 Total Vapes in circulation: {format_num(vapes_now)} (+{format_num(vapes_diff)})\n\n"
@@ -73,7 +74,7 @@ def run():
         client.create_tweet(text=tweet_text)
         print("🚀 Tweet envoyé sur X !")
 
-        # Mise à jour de la mémoire
+        # Mise à jour de la mémoire pour demain
         with open(DB_FILE, "w") as f:
             json.dump({"vapes": vapes_now}, f)
         print("💾 data.json mis à jour.")

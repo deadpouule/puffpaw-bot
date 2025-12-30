@@ -4,12 +4,12 @@ import tweepy
 from dune_client.client import DuneClient
 from dotenv import load_dotenv
 
-# Charger les clés
+# Charger les clés du fichier .env
 load_dotenv()
 
 # Configuration
 DUNE_API_KEY = os.getenv("DUNE_API_KEY")
-QUERY_ID = 6427346
+QUERY_ID = 6440532  # Ton nouvel ID
 DB_FILE = "data.json"
 
 def format_num(num):
@@ -20,21 +20,21 @@ def format_num(num):
         return "0"
 
 def run():
-    print("🔄 Forçage du rafraîchissement des données sur Dune...")
+    print(f"⏳ Récupération du dernier résultat pour la query {QUERY_ID}...")
     dune = DuneClient(DUNE_API_KEY)
     
     try:
-        # Lance la requête et attend le résultat frais
-        query_result = dune.run_query(query_id=QUERY_ID)
+        # Utilisation de get_latest_result comme demandé
+        query_result = dune.get_latest_result(QUERY_ID)
         today_data = query_result.result.rows[0]
-        print("✅ Données Dune récupérées avec succès.")
+        print("✅ Données Dune récupérées.")
     except Exception as e:
         print(f"❌ Erreur Dune : {e}")
         return
 
     # --- IDENTIFICATION DE LA COLONNE ---
-    # On cherche le chiffre actuel (vapes/devices)
-    vapes_now = today_data.get('total_devices', today_data.get('vapes', 0))
+    # Le SQL que nous avons fait ensemble utilise 'total_vapes'
+    vapes_now = today_data.get('total_vapes', 0)
 
     # --- GESTION DE LA MÉMOIRE ---
     if os.path.exists(DB_FILE):
@@ -46,9 +46,9 @@ def run():
         print(f"📖 Mémoire chargée : {prev_data.get('vapes')} vapes hier.")
     else:
         prev_data = {"vapes": vapes_now}
-        print("🆕 Pas de mémoire trouvée, création du fichier.")
+        print("🆕 Première exécution : création de la mémoire.")
 
-    # Calcul de la différence avec hier
+    # Calcul de la différence
     vapes_diff = vapes_now - prev_data.get("vapes", vapes_now)
 
     # --- PRÉPARATION DU TWEET ---

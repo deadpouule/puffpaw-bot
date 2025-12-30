@@ -4,7 +4,7 @@ import tweepy
 from dune_client.client import DuneClient
 from dotenv import load_dotenv
 
-# Charger les clés du fichier .env
+# Charger les clés
 load_dotenv()
 
 # Configuration
@@ -19,43 +19,41 @@ def format_num(num):
         return "0"
 
 def run():
-    print("⏳ Récupération des données sur Dune...")
+    print("🔄 Forçage du rafraîchissement des données sur Dune (Poll)...")
     dune = DuneClient(DUNE_API_KEY)
     
     try:
-        query_result = dune.get_latest_result(QUERY_ID)
-        # On récupère la ligne de données
+        # Cette fonction force Dune à relancer la requête SQL
+        query_result = dune.run_query_and_poll_results(QUERY_ID)
         today_data = query_result.result.rows[0]
+        print("✅ Données Dune récupérées avec succès.")
     except Exception as e:
-        print(f"❌ Erreur Dune : {e}")
+        print(f"❌ Erreur lors du rafraîchissement Dune : {e}")
         return
 
     # --- IDENTIFICATION DE LA COLONNE ---
-    # Ici, on cherche la colonne des vapes/devices. 
-    # J'ai mis les noms les plus probables.
+    # On cherche 'total_devices' ou 'vapes'
     vapes_now = today_data.get('total_devices', today_data.get('vapes', 0))
 
     # --- GESTION DE LA MÉMOIRE ---
     if os.path.exists(DB_FILE):
         with open(DB_FILE, "r") as f:
-            prev_data = json.load(f)
-        print("📖 Mémoire chargée.")
+            try:
+                prev_data = json.load(f)
+            except:
+                prev_data = {"vapes": vapes_now}
+        print(f"📖 Mémoire chargée : {prev_data.get('vapes')} vapes hier.")
     else:
-        # Initialisation si premier lancement
         prev_data = {"vapes": vapes_now}
-        with open(DB_FILE, "w") as f:
-            json.dump(prev_data, f)
-        print("🆕 Premier lancement : mémoire créée.")
+        print("🆕 Pas de mémoire trouvée, création du fichier.")
 
     # Calcul de la différence
     vapes_diff = vapes_now - prev_data.get("vapes", vapes_now)
 
     # --- PRÉPARATION DU TWEET ---
-    # Format simple : Nombre de vapes + (augmentation)
     tweet_text = (
-        f"🚨 PUFFPAW SALE UPDATE 🚨\n\n"
-        f"💨 Total Vapes in circulation: {format_num(vapes_now)} (+{format_num(vapes_diff)})\n\n"
-    )
+f"🚨 PUFFPAW SALE UPDATE 🚨\n\n"
+        f"💨 Total Vapes in circulation: {format_num(vapes_now)} (+{format_num(vapes_diff)})\n\n"    )
 
     print(f"📝 Tweet prêt : {tweet_text}")
 
@@ -68,11 +66,12 @@ def run():
             access_token_secret=os.getenv("X_ACCESS_TOKEN_SECRET")
         )
         client.create_tweet(text=tweet_text)
-        print("✅ Tweet envoyé !")
+        print("🚀 Tweet envoyé sur X !")
 
         # Mise à jour de la mémoire pour demain
         with open(DB_FILE, "w") as f:
             json.dump({"vapes": vapes_now}, f)
+        print("💾 data.json mis à jour.")
             
     except Exception as e:
         print(f"❌ Erreur Twitter : {e}")

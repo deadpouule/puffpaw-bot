@@ -5,10 +5,10 @@ from datetime import datetime
 from dune_client.client import DuneClient
 from dotenv import load_dotenv
 
-# Charger les clés
-load_dotenv()
+if not os.getenv("GITHUB_ACTIONS"):
+    load_dotenv()
 
-# Configuration
+Configuration
 DUNE_API_KEY = os.getenv("DUNE_API_KEY")
 QUERY_ID = 6440532
 DB_FILE = "data.json"
@@ -82,5 +82,7 @@ def run():
     except Exception as e:
         print(f"❌ Erreur Twitter : {e}")
 
-if __name__ == "__main__":
+if name == "main":
     run()
+
+Show less

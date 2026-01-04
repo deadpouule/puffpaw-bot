@@ -84,5 +84,3 @@ def run():
 
 if name == "main":
     run()
-
-Show less
